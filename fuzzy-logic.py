@@ -6,23 +6,25 @@ def readData():
 	dataSet = pd.read_csv("influencers.csv",delimiter =',')
 	return dataSet
 
-def rumus_segitiga(x,a,b,c):
-	if x<0 or x >= c:
+def rumus_segitiga(x,a,b,c,d):
+	if x<a or x >=d:
 		return 0
 	elif a<x<=b:
 		return (x-a)/(b-a)
-	elif b < x < c:
-		return -(x-c)/(c-b)
+	elif b <= x <= c:
+		return 1
+	elif c < x <= d:
+		return -(x-d)/(d-c)
 	else:
 		return 0
 
 def derajatKeanggotaanFollower(data_set):
 	variabel_linguistik = {
-		"sangat_sedikit" : [0,10000,20000],
-		"sedikit" : [10000,20000,40000],
-		"sedang" : [20000,40000,60000],
-		"banyak" : [40000,60000,80000],
-		"sangat_banyak" : [60000,80000,100000]
+		"sangat_sedikit" : [0,0,10000,15000],
+		"sedikit" : [10000,15000,30000,35000],
+		"sedang" : [30000,35000,50000,55000],
+		"banyak" : [50000,55000,65000,70000],
+		"sangat_banyak" : [65000,70000,100000,100000]
 	}
 
 	crisp_set = {
@@ -32,18 +34,18 @@ def derajatKeanggotaanFollower(data_set):
 		"banyak" : 0.0,
 		"sangat_banyak" : 0.0
 	}
-
+	
 	for fuzzy_set in variabel_linguistik.keys():
 		crisp_set[fuzzy_set] = rumus_segitiga(data_set, *variabel_linguistik[fuzzy_set])
 
 	return crisp_set
 
 def derajatKeanggotaanEngagement(data_set):
-	lines  = []
+	lines  = []	
 	variabel_linguistik = {
-		"rendah" : [0.0,1.0,3.0],
-		"normal" : [1.0,4.0,6.0],
-		"tinggi" : [4.0,7.0,10.0],
+		"rendah" : [0.0,0.0,3.0,4.0],
+		"normal" : [3.0,4.0,6.0,7.0],
+		"tinggi" : [6.0,7.0,10.0,10.0],
 	}
 
 	crisp_set = {
@@ -92,7 +94,6 @@ def setRule(var_linguistik_follower,var_linguistik_enganggement):
 
 def defuzzyficationSugeno(rule):
 	top,bottom = 0,0
-	
 	for i in rule:
 		if i[0] == "tolak":
 			top += i[1]*20
@@ -103,14 +104,16 @@ def defuzzyficationSugeno(rule):
 		elif i[0] == "terima":
 			top += i[1]*80
 
+
 		bottom += i[1]
-	
 	return top/bottom
 		
 def inferenceSugeno(rule,index):
 	hasil,arrTolak,arrPertimbangan,arrTerima = [],[],[],[]
+	
 	for data in rule:
-		data.append(min(data_set['Crips_follower'][index][data[0]],data_set['Crips_engagement'][index][data[1]]))
+		minim = min(data_set['Crips_follower'][index][data[0]],data_set['Crips_engagement'][index][data[1]])
+		data.append(minim)
 	
 	for i in range(len(rule)):
 		if rule[i][2] == "tolak":
@@ -128,34 +131,32 @@ def inferenceSugeno(rule,index):
 		hasil.append(max(arrPertimbangan))
 	if arrTerima != []:
 		hasil.append(max(arrTerima))		
-	
+	# print(hasil)
 	return hasil
 
 def ruleInference(data_set):	
 	defuzz = []
-	rule = []
 	for i in range(len(data_set)):
-		# print(data_set['Crips_follower'][i],data_set['Crips_engagement'][i])
+		rule = []
 		for keys_follow in data_set['Crips_follower'][i]:
 			for keys_engag in data_set['Crips_engagement'][i]:
-			# print(data_set['Crips_engagement'][i][keys_engag])
 				if data_set['Crips_follower'][i][keys_follow] != 0 and data_set['Crips_engagement'][i][keys_engag] != 0:
-					# print(keys_engag,data_set['Crips_engagement'][i][keys_engag])
-					# print(keys_follow,data_set['Crips_follower'][i][keys_follow])	
 					rule.append([keys_follow,keys_engag,setRule(keys_follow,keys_engag)])
-		defuzz.append(defuzzyficationSugeno(inferenceSugeno(rule,i)))			
-	
+		defuzzy = defuzzyficationSugeno(inferenceSugeno(rule,i)) 
+		defuzz.append(defuzzy)			
 	data_set["deffuz"] = defuzz		
 		
 
 if __name__ == '__main__':
 
-	# print(derajatKeanggotaanFollower(38237))
-	# print(derajatKeanggotaanEngagement(5.8))
+
 	data_set = readData();
-	fuzzyfication(data_set )
+	fuzzyfication(data_set)
 	ruleInference(data_set)
-	x = data_set.sort_values(by=['deffuz'],ascending = False).head()
 	pd.set_option('display.max_colwidth', -1)
-	print(x)
-	print(data_set.sort_values(by=['deffuz'],ascending = False).head())
+	x = data_set.sort_values(by=['deffuz'],ascending = False)
+	dat = x.iloc[0:20,[0]]
+	dataq = x.iloc[0:20,[0,1,2,5]]
+	print(dataq)
+	dat.to_csv('20_id_terbaik.csv',header=False,index=False)
+	# print(x)
